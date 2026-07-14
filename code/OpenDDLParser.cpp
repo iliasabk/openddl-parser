@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------------------------
 The MIT License (MIT)
 
-Copyright (c) 2014-2025 Kim Kulling
+Copyright (c) 2014-2026 Kim Kulling
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -743,6 +743,10 @@ char *OpenDDLParser::parseIntegerLiteral(char *in, char *end, Value **integer, V
 }
 
 char *OpenDDLParser::parseFloatingLiteral(char *in, char *end, Value **floating, Value::ValueType floatType) {
+    if (floating == nullptr) {
+        return in;
+    }
+    
     *floating = nullptr;
     if (nullptr == in || in == end) {
         return in;
@@ -787,6 +791,10 @@ char *OpenDDLParser::parseFloatingLiteral(char *in, char *end, Value **floating,
 }
 
 char *OpenDDLParser::parseStringLiteral(char *in, char *end, Value **stringData) {
+    if (stringData == nullptr) {
+        return in;
+    }
+    
     *stringData = nullptr;
     if (nullptr == in || in == end) {
         return in;
@@ -820,6 +828,10 @@ static void createPropertyWithData(Text *id, Value *primData, Property **prop) {
 }
 
 char *OpenDDLParser::parseHexaLiteral(char *in, char *end, Value **data) {
+    if (data == nullptr) {
+        return in;
+    }
+    
     *data = nullptr;
     if (nullptr == in || in == end) {
         return in;
@@ -876,6 +888,10 @@ char *OpenDDLParser::parseHexaLiteral(char *in, char *end, Value **data) {
 }
 
 char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
+    if (prop == nullptr) {
+        return in;
+    }
+    
     *prop = nullptr;
     if (nullptr == in || in == end) {
         return in;
@@ -918,6 +934,10 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
 
 char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, Value **data,
         size_t &numValues, Reference **refs, size_t &numRefs) {
+    if (data == nullptr) {
+        return in;
+    }
+    
     *data = nullptr;
     numValues = numRefs = 0;
     if (nullptr == in || in == end) {
