@@ -395,7 +395,7 @@ static void setNodeDataArrayList(DDLNode *currentNode, DataArrayList *dtArrayLis
 }
 
 char *OpenDDLParser::parseStructureBody(char *in, char *end, bool &error) {
-    if (!isNumeric(*in) && !isCharacter(*in)) {
+    if (in != end && !isNumeric(*in) && !isCharacter(*in)) {
         ++in;
     }
 
@@ -406,7 +406,7 @@ char *OpenDDLParser::parseStructureBody(char *in, char *end, bool &error) {
     if (Value::ValueType::ddl_none != type) {
         // parse a primitive data type
         in = lookForNextToken(in, end);
-        if (*in == Grammar::OpenBracketToken[0]) {
+        if (in != end && *in == Grammar::OpenBracketToken[0]) {
             Reference *refs(nullptr);
             DataArrayList *dtArrayList(nullptr);
             Value *values(nullptr);
@@ -518,7 +518,7 @@ char *OpenDDLParser::parseName(char *in, char *end, Name **name) {
 
     // ignore blanks
     in = lookForNextToken(in, end);
-    if (*in != '$' && *in != '%') {
+    if (in == end || (*in != '$' && *in != '%')) {
         return in;
     }
 
@@ -663,7 +663,7 @@ char *OpenDDLParser::parseBooleanLiteral(char *in, char *end, Value **boolean) {
     char *start(in);
 
     size_t len(0);
-    while (!isSeparator(*in) && in != end) {
+    while (in != end && !isSeparator(*in)) {
         ++in;
         ++len;
     }
@@ -696,17 +696,20 @@ char *OpenDDLParser::parseIntegerLiteral(char *in, char *end, Value **integer, V
 
     in = lookForNextToken(in, end);
     char *start(in);
-    while (!isSeparator(*in) && in != end) {
+    while (in != end && !isSeparator(*in)) {
         ++in;
     }
 
-    if (isNumeric(*start)) {
+    if (start != end && isNumeric(*start)) {
+        // The buffer is not null-terminated: convert on a bounded copy
+        // so the strto* calls cannot read past the end of the buffer.
+        const std::string token(start, in);
 #ifdef OPENDDL_NO_USE_CPP11
-        const int64 value(atol(start)); // maybe not really 64bit as atoll is but exists without c++11
-        const uint64 uvalue(strtoul(start, nullptr, 10));
+        const int64 value(atol(token.c_str())); // maybe not really 64bit as atoll is but exists without c++11
+        const uint64 uvalue(strtoul(token.c_str(), nullptr, 10));
 #else
-        const int64 value(atoll(start));
-        const uint64 uvalue(strtoull(start, nullptr, 10));
+        const int64 value(atoll(token.c_str()));
+        const uint64 uvalue(strtoull(token.c_str(), nullptr, 10));
 #endif
         *integer = ValueAllocator::allocPrimData(integerType);
         switch (integerType) {
@@ -761,23 +764,25 @@ char *OpenDDLParser::parseFloatingLiteral(char *in, char *end, Value **floating,
         return in;
     }
 
-    if (isNumeric(*start)) {
+    if (start != end && isNumeric(*start)) {
         ok = true;
     } else {
-        if (*start == '-') {
-            if (isNumeric(*(start + 1))) {
-                ok = true;
-            }
+        if (start != end && *start == '-' && start + 1 != end &&
+                isNumeric(*(start + 1))) {
+            ok = true;
         }
     }
 
     if (ok) {
+        // The buffer is not null-terminated: convert on a bounded copy
+        // so atof cannot read past the end of the buffer.
+        const std::string token(start, in);
         if (floatType == Value::ValueType::ddl_double) {
-            const double value(atof(start));
+            const double value(atof(token.c_str()));
             *floating = ValueAllocator::allocPrimData(Value::ValueType::ddl_double);
             (*floating)->setDouble(value);
         } else {
-            const float value((float)atof(start));
+            const float value((float)atof(token.c_str()));
             *floating = ValueAllocator::allocPrimData(Value::ValueType::ddl_float);
             (*floating)->setFloat(value);
         }
@@ -795,12 +800,15 @@ char *OpenDDLParser::parseStringLiteral(char *in, char *end, Value **stringData)
     in = lookForNextToken(in, end);
     size_t len(0);
     char *start(in);
-    if (*start == '\"') {
+    if (start != end && *start == '\"') {
         ++start;
         ++in;
-        while (*in != '\"' && in != end) {
+        while (in != end && *in != '\"') {
             ++in;
             ++len;
+        }
+        if (in == end) {
+            return in;
         }
 
         *stringData = ValueAllocator::allocPrimData(Value::ValueType::ddl_string, len);
@@ -826,12 +834,12 @@ char *OpenDDLParser::parseHexaLiteral(char *in, char *end, Value **data) {
     }
 
     in = lookForNextToken(in, end);
-    if (*in != '0') {
+    if (in == end || *in != '0') {
         return in;
     }
 
     ++in;
-    if (*in != 'x' && *in != 'X') {
+    if (in == end || (*in != 'x' && *in != 'X')) {
         return in;
     }
 
@@ -839,7 +847,7 @@ char *OpenDDLParser::parseHexaLiteral(char *in, char *end, Value **data) {
     bool ok(true);
     char *start(in);
     int pos(0);
-    while (!isSeparator(*in) && in != end) {
+    while (in != end && !isSeparator(*in)) {
         if ((*in < '0' && *in > '9') || (*in < 'a' && *in > 'f') || (*in < 'A' && *in > 'F')) {
             ok = false;
             break;
@@ -856,7 +864,7 @@ char *OpenDDLParser::parseHexaLiteral(char *in, char *end, Value **data) {
     while (pos > 0) {
         int v = hex2Decimal(*start);
         if (v < 0) {
-            while (isEndofLine(*in)) {
+            while (in != end && isEndofLine(*in)) {
                 ++in;
             }
             return in;
@@ -896,7 +904,7 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
             } else if (isFloat(in, end)) {
                 in = parseFloatingLiteral(in, end, &primData);
                 createPropertyWithData(id, primData, prop);
-            } else if (isStringLiteral(*in)) { // string data
+            } else if (in != end && isStringLiteral(*in)) { // string data
                 in = parseStringLiteral(in, end, &primData);
                 createPropertyWithData(id, primData, prop);
             } else { // reference data
@@ -944,7 +952,7 @@ char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, V
                     in = parseIntegerLiteral(in, end, &current);
                 } else if (isFloat(in, end)) {
                     in = parseFloatingLiteral(in, end, &current);
-                } else if (isStringLiteral(*in)) {
+                } else if (in != end && isStringLiteral(*in)) {
                     in = parseStringLiteral(in, end, &current);
                 } else if (isHexLiteral(in, end)) {
                     in = parseHexaLiteral(in, end, &current);
@@ -1020,7 +1028,7 @@ char *OpenDDLParser::parseDataArrayList(char *in, char *end, Value::ValueType ty
     }
 
     in = lookForNextToken(in, end);
-    if (*in == Grammar::OpenBracketToken[0]) {
+    if (in != end && *in == Grammar::OpenBracketToken[0]) {
         ++in;
         Value *currentValue(nullptr);
         Reference *refs(nullptr);
@@ -1042,9 +1050,11 @@ char *OpenDDLParser::parseDataArrayList(char *in, char *end, Value::ValueType ty
                     }
                 }
             }
-        } while (Grammar::CommaSeparator[0] == *in && in != end);
+        } while (in != end && Grammar::CommaSeparator[0] == *in);
         in = lookForNextToken(in, end);
-        ++in;
+        if (in != end) {
+            ++in;
+        }
     }
 
     return in;
