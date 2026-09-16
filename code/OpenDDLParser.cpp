@@ -390,6 +390,8 @@ static void setNodeDataArrayList(DDLNode *currentNode, DataArrayList *dtArrayLis
     if (nullptr != dtArrayList) {
         if (nullptr != currentNode) {
             currentNode->setDataArrayList(dtArrayList);
+        } else {
+            delete dtArrayList;
         }
     }
 }
@@ -785,7 +787,7 @@ char *OpenDDLParser::parseFloatingLiteral(char *in, char *end, Value **floating,
             *floating = ValueAllocator::allocPrimData(Value::ValueType::ddl_double);
             (*floating)->setDouble(value);
         } else {
-            const float value((float)atof(token.c_str()));
+            const auto value = static_cast<float>(atof(token.c_str()));
             *floating = ValueAllocator::allocPrimData(Value::ValueType::ddl_float);
             (*floating)->setFloat(value);
         }
@@ -802,8 +804,7 @@ char *OpenDDLParser::parseStringLiteral(char *in, char *end, Value **stringData)
 
     in = lookForNextToken(in, end);
     size_t len(0);
-    char *start(in);
-    if (start != end && *start == '\"') {
+    if (char *start(in); start != end && *start == '\"') {
         ++start;
         ++in;
         while (in != end && *in != '\"') {
@@ -914,10 +915,12 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
                 std::vector<Name *> names;
                 in = parseReference(in, end, names);
                 if (!names.empty()) {
-                    Reference *ref = new Reference(names.size(), &names[0]);
                     (*prop) = new Property(id);
-                    (*prop)->m_ref = ref;
+                    (*prop)->m_ref = new Reference(names.size(), &names[0]);
                 }
+            }
+            if (nullptr == *prop) {
+                delete id;
             }
         } else {
             delete id;
@@ -930,7 +933,8 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
 char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, Value **data,
         size_t &numValues, Reference **refs, size_t &numRefs) {
     *data = nullptr;
-    numValues = numRefs = 0;
+    numValues = 0;
+    numRefs = 0;
     if (nullptr == in || in == end) {
         return in;
     }
