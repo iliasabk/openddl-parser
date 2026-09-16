@@ -599,6 +599,9 @@ char *OpenDDLParser::parsePrimitiveDataType(char *in, char *end, Value::ValueTyp
     } else {
         in += prim_len;
     }
+    if (in == end) {
+        return in;
+    }
 
     bool ok(true);
     if (*in == Grammar::OpenArrayToken[0]) {
@@ -607,7 +610,7 @@ char *OpenDDLParser::parsePrimitiveDataType(char *in, char *end, Value::ValueTyp
         char *start(in);
         while (in != end) {
             ++in;
-            if (*in == Grammar::CloseArrayToken[0]) {
+            if (in != end && *in == Grammar::CloseArrayToken[0]) {
                 len = ::atoi(start);
                 ok = true;
                 ++in;
