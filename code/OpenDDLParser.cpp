@@ -308,8 +308,10 @@ char *OpenDDLParser::parseHeader(char *in, char *end) {
                 while (in != end && (isSpace(*in) || isNewLine(*in))) {
                     ++in;
                 }
-                if(in == end) {
-                    break;
+                if (in == end) {
+                    delete prop;
+                    delete first;
+                    return nullptr;
                 }
 
                 if (*in != Grammar::CommaSeparator[0] && *in != Grammar::ClosePropertyToken[0]) {
@@ -327,11 +329,14 @@ char *OpenDDLParser::parseHeader(char *in, char *end) {
                         prev->m_next = prop;
                     }
                     prev = prop;
+                    prop = nullptr;
                 }
             }
-            if(in != end) {
-                ++in;
+            if (in == end) {
+                delete first;
+                return nullptr;
             }
+            ++in;
         }
 
         // set the properties
