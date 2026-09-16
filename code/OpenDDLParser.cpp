@@ -308,10 +308,12 @@ char *OpenDDLParser::parseHeader(char *in, char *end) {
 
                 if (*in != Grammar::CommaSeparator[0] && *in != Grammar::ClosePropertyToken[0]) {
                     logInvalidTokenError(std::string(in, end), Grammar::ClosePropertyToken, m_logCallback);
+                    delete prop;
+                    delete first;
                     return nullptr;
                 }
 
-                if (nullptr != prop && *in != Grammar::CommaSeparator[0]) {
+                if (nullptr != prop) {
                     if (nullptr == first) {
                         first = prop;
                     }
@@ -1043,6 +1045,7 @@ char *OpenDDLParser::parseDataArrayList(char *in, char *end, Value::ValueType ty
         do {
             size_t numRefs(0), numValues(0);
             currentValue = nullptr;
+            refs = nullptr;
 
             in = parseDataList(in, end, type, &currentValue, numValues, &refs, numRefs);
             if (nullptr != currentValue || 0 != numRefs) {
