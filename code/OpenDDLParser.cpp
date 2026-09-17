@@ -194,6 +194,7 @@ void OpenDDLParser::clear() {
     m_buffer.resize(0);
     delete m_context;
     m_context = nullptr;
+    m_stack.clear();
 }
 
 bool OpenDDLParser::validate() {
@@ -229,6 +230,7 @@ bool OpenDDLParser::parse() {
     while (pos < m_buffer.size()) {
         current = parseNextNode(current, end);
         if (current == nullptr) {
+            m_stack.clear();
             return false;
         }
         pos = current - &m_buffer[0];
@@ -335,9 +337,26 @@ char *OpenDDLParser::parseHeader(char *in, char *end) {
     return in;
 }
 
+namespace {
+// Upper bound for the nesting depth of structures. Every level of nesting
+// pushes one node onto the parser stack, so m_stack.size() is the current
+// depth plus one slot for the root node; without a bound deeply nested
+// input overflows the call stack.
+// 256 keeps several recursion frames per level well inside a default
+// thread stack, also under sanitizer builds with inflated frames.
+constexpr size_t MaxNestingDepth = 256;
+} // namespace
+
 char *OpenDDLParser::parseStructure(char *in, char *end) {
     if (nullptr == in || in == end) {
         return in;
+    }
+
+    if (m_stack.size() > MaxNestingDepth + 1) {
+        if (m_logCallback) {
+            m_logCallback(ddl_error_msg, "Maximum structure nesting depth exceeded.");
+        }
+        return nullptr;
     }
 
     bool error{false};
