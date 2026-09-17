@@ -927,6 +927,9 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
                     (*prop)->m_ref = ref;
                 }
             }
+            if (nullptr == *prop) {
+                delete id;
+            }
         } else {
             delete id;
         }
@@ -938,7 +941,8 @@ char *OpenDDLParser::parseProperty(char *in, char *end, Property **prop) {
 char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, Value **data,
         size_t &numValues, Reference **refs, size_t &numRefs) {
     *data = nullptr;
-    numValues = numRefs = 0;
+    numValues = 0;
+    numRefs = 0;
     if (nullptr == in || in == end) {
         return in;
     }
@@ -955,6 +959,7 @@ char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, V
                 in = parseReference(in, end, names);
                 if (!names.empty()) {
                     Reference *ref = new Reference(names.size(), &names[0]);
+                    delete *refs;
                     *refs = ref;
                     numRefs = names.size();
                 }
