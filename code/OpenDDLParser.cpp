@@ -958,6 +958,7 @@ char *OpenDDLParser::parseDataList(char *in, char *end, Value::ValueType type, V
                 in = parseReference(in, end, names);
                 if (!names.empty()) {
                     Reference *ref = new Reference(names.size(), &names[0]);
+                    delete *refs;
                     *refs = ref;
                     numRefs = names.size();
                 }
